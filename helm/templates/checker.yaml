@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ .Chart.Name }}-checker
+  labels:
+    app: checker
+spec:
+  selector:
+    matchLabels:
+      app: checker
+  template:
+    metadata:
+      labels:
+        app: checker
+    spec:
+      containers:
+        - name: checker
+          image: nobidev/base
+          readinessProbe:
+            exec:
+              command:
+                - bash
+                - -c
+                - |
+                  for ip_address in $(dig +short +search helm-nginx); do
+                    if [ $(curl -s ${ip_address}/test | wc -c) != $(numfmt --from=iec {{ .Values.size }}) ]; then
+                      exit 1
+                    fi
+                  done

@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ .Chart.Name }}-ingress
+  labels:
+    app: ingress
+spec:
+  selector:
+    matchLabels:
+      app: ingress
+  template:
+    metadata:
+      labels:
+        app: ingress
+    spec:
+      containers:
+        - name: ingress-host
+          image: nobidev/base
+          env:
+            - name: HostIP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+          livenessProbe:
+            exec:
+              command:
+                - bash
+                - -c
+                - |
+                  nc -z ${HostIP} {{ .Values.hostPort }}
+          readinessProbe:
+            exec:
+              command:
+                - bash
+                - -c
+                - |
+                  if [ $(curl -s ${HostIP}:{{ .Values.hostPort }}/test | wc -c) != $(numfmt --from=iec {{ .Values.size }}) ]; then
+                      exit 1
+                  fi
+        - name: ingress-container
+          image: nobidev/base
+          env:
+            - name: HostIP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+          livenessProbe:
+            exec:
+              command:
+                - bash
+                - -c
+                - |
+                  ! nc -z localhost {{ .Values.hostPort }}
